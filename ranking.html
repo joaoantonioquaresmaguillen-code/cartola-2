@@ -1,237 +1,102 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Ranking - Cartola Escolares</title>
-
+    <title>Ranking Interclasse</title>
     <style>
-
-        body {
-
-            font-family: 'Arial', sans-serif;
-
-            background-color: #1a1a2e;
-
-            color: white;
-
-            margin: 0;
-
-            padding: 20px;
-
-            display: flex;
-
-            flex-direction: column;
-
-            align-items: center;
-
-        }
-
-        h1 { color: #fbc531; text-align: center; margin-bottom: 5px; }
-
-        p { color: #a2a2bd; margin-top: 0; margin-bottom: 30px; text-align: center; }
-
-        
-
-        .card-time {
-
-            background-color: #16213e;
-
-            width: 100%;
-
-            max-width: 500px;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            border-left: 5px solid #4cd137;
-
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-
-            margin-bottom: 15px;
-
-            box-sizing: border-box;
-
-        }
-
-        .info-time h2 { margin: 0; color: #e94560; font-size: 1.4rem; }
-
-        .treinador { color: #a2a2bd; font-size: 0.9rem; }
-
-        
-
-        .stats { text-align: right; }
-
-        .pontos { font-size: 1.5rem; font-weight: bold; color: #4cd137; }
-
-        .patrimonio { font-size: 0.9rem; color: #fbc531; margin-top: 5px; }
-
-        
-
-        a.voltar { color: #a2a2bd; text-decoration: none; margin-bottom: 20px; display: block; }
-
-        
-
-        .aviso {
-
-            margin-top: 30px;
-
-            background-color: #0f3460;
-
-            padding: 15px;
-
-            border-radius: 8px;
-
-            max-width: 500px;
-
-            text-align: center;
-
-            font-size: 0.9rem;
-
-            color: #a2a2bd;
-
-        }
-
+        body { font-family: 'Segoe UI', Arial; background: #1a1a2e; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .ranking-container { width: 100%; max-width: 600px; background: #16213e; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        h1 { color: #fbc531; margin-bottom: 5px; }
+        p { color: #a2a2bd; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; color: #e94560; padding: 12px; border-bottom: 2px solid #0f3460; }
+        td { padding: 15px 12px; border-bottom: 1px solid #0f3460; text-align: left; }
+        .posicao { font-weight: bold; color: #fbc531; width: 40px; }
+        .valor { color: #4cd137; font-weight: bold; text-align: right; }
+        th:last-child { text-align: right; }
+        .voltar { color: #a2a2bd; text-decoration: none; margin-top: 20px; display: inline-block; }
     </style>
-
 </head>
-
 <body>
 
+    <div class="ranking-container">
+        <h1>🏆 Ranking Interclasse</h1>
+        <p>Acompanhe quem está dominando o patrimônio!</p>
 
+        <table>
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Time</th>
+                    <th>Patrimônio</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabela">
+                <tr>
+                    <td colspan="3" style="text-align:center;">Buscando dados na nuvem...</td>
+                </tr>
+            </tbody>
+        </table>
 
-    <a href="index.html" class="voltar">⬅ Voltar para o Início</a>
-
-    
-
-    <h1>🏆 Ranking Interclasse</h1>
-
-    <p>Acompanhe a pontuação e o patrimônio dos times!</p>
-
-
-
-    <div id="listaRanking">
-
-        </div>
-
-
-
-    <div class="aviso">
-
-        <strong>Nota do Sistema:</strong> Como estamos rodando a versão de testes no seu navegador, você só verá o seu próprio time aqui. Quando hospedarmos na internet com um banco de dados, os times de todos os seus amigos aparecerão nesta lista!
-
+        <a href="menu.html" class="voltar">⬅ Voltar ao Menu</a>
     </div>
 
+    <script>
+        // URL DO SEU FIREBASE
+        const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
 
+        async function carregarRanking() {
+            const corpo = document.getElementById('corpoTabela');
 
-<script>
+            try {
+                const res = await fetch(`${DB_URL}/contas.json`);
+                const contasData = await res.json();
 
-    const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+                if (!contasData) {
+                    corpo.innerHTML = "<tr><td colspan='3'>Nenhum time cadastrado.</td></tr>";
+                    return;
+                }
 
+                // Transforma o objeto em lista e calcula o valor total de cada time
+                let listaRanking = Object.keys(contasData).map(id => {
+                    const conta = contasData[id];
+                    
+                    // Soma o valor dos jogadores comprados (Elenco)
+                    let valorElenco = 0;
+                    if (conta.elenco) {
+                        Object.values(conta.elenco).forEach(jog => {
+                            valorElenco += parseFloat(jog.preco) || 0;
+                        });
+                    }
 
+                    return {
+                        nome: conta.nomeTime,
+                        total: (parseFloat(conta.saldo) || 0) + valorElenco
+                    };
+                });
 
-    async function carregarRanking() {
+                // Ordena do maior para o menor
+                listaRanking.sort((a, b) => b.total - a.total);
 
-        const tabela = document.getElementById('tabelaRanking');
+                // Limpa e preenche a tabela
+                corpo.innerHTML = "";
+                listaRanking.forEach((item, index) => {
+                    corpo.innerHTML += `
+                        <tr>
+                            <td class="posicao">${index + 1}º</td>
+                            <td>${item.nome}</td>
+                            <td class="valor">C$ ${item.total.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
 
-        tabela.innerHTML = "<tr><td colspan='3'>Carregando classificação...</td></tr>";
-
-
-
-        const res = await fetch(`${DB_URL}/contas.json`);
-
-        const contasData = await res.json();
-
-
-
-        if (!contasData) {
-
-            tabela.innerHTML = "<tr><td colspan='3'>Nenhum time criado.</td></tr>";
-
-            return;
-
+            } catch (error) {
+                corpo.innerHTML = "<tr><td colspan='3'>Erro ao conectar com o banco.</td></tr>";
+            }
         }
 
-
-
-        // Transforma o objeto do Firebase em array para ordenar
-
-        let rankingData = Object.keys(contasData).map(id => {
-
-            const conta = contasData[id];
-
-            const elenco = conta.elenco ? Object.values(conta.elenco) : [];
-
-            
-
-            // Calcula o valor do elenco somando o preço de cada jogador
-
-            const valorElenco = elenco.reduce((total, jog) => total + (parseFloat(jog.preco) || 0), 0);
-
-            const patrimonioTotal = (parseFloat(conta.saldo) || 0) + valorElenco;
-
-
-
-            return {
-
-                nome: conta.nomeTime,
-
-                patrimonio: patrimonioTotal
-
-            };
-
-        });
-
-
-
-        // Ordena do maior patrimônio para o menor
-
-        rankingData.sort((a, b) => b.patrimonio - a.patrimonio);
-
-
-
-        tabela.innerHTML = "";
-
-        rankingData.forEach((item, index) => {
-
-            tabela.innerHTML += `
-
-                <tr>
-
-                    <td class="posicao">${index + 1}º</td>
-
-                    <td>${item.nome}</td>
-
-                    <td class="valor">C$ ${item.patrimonio.toFixed(2)}</td>
-
-                </tr>
-
-            `;
-
-        });
-
-    }
-
-
-
-    carregarRanking();
-
-</script>
-
-<a href="index.html" style="color: #a2a2bd; text-decoration: none; margin-bottom: 20px;">⬅ Voltar</a>
-
+        carregarRanking();
+    </script>
 </body>
-
 </html>
