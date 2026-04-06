@@ -42,61 +42,82 @@
         <a href="menu.html" class="voltar">⬅ Voltar ao Menu</a>
     </div>
 
-    <script>
-        // URL DO SEU FIREBASE
-        const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+<script>
+    const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
 
-        async function carregarRanking() {
-            const corpo = document.getElementById('corpoTabela');
+    async function carregarRanking() {
+        const corpo = document.getElementById('corpoTabela');
 
-            try {
-                const res = await fetch(`${DB_URL}/contas.json`);
-                const contasData = await res.json();
+        try {
+            // 1. Busca as contas e os jogadores AO MESMO TEMPO
+            const [resContas, resJogadores] = await Promise.all([
+                fetch(`${DB_URL}/contas.json`),
+                fetch(`${DB_URL}/jogadores.json`)
+            ]);
 
-                if (!contasData) {
-                    corpo.innerHTML = "<tr><td colspan='3'>Nenhum time cadastrado.</td></tr>";
-                    return;
+            const contasData = await resContas.json();
+            const jogadoresData = await resJogadores.json();
+
+            if (!contasData || !jogadoresData) {
+                corpo.innerHTML = "<tr><td colspan='3'>Aguardando dados...</td></tr>";
+                return;
+            }
+
+            // 2. Mapeia os preços atuais do mercado para consulta rápida
+            // Isso garante que pegamos o valor de AGORA, não o de quando comprou
+            const precosAtuais = {};
+            Object.values(jogadoresData).forEach(j => {
+                precosAtuais[j.nome] = parseFloat(j.preco);
+            });
+
+            let listaRanking = Object.keys(contasData).map(id => {
+                const conta = contasData[id];
+                
+                // 3. Calcula o Valor do Elenco com Preços de AGORA
+                let valorAtualDoElenco = 0;
+                if (conta.elenco) {
+                    Object.values(conta.elenco).forEach(jogNoTime => {
+                        // Busca o preço que está no mercado hoje para esse nome
+                        const precoHoje = precosAtuais[jogNoTime.nome] || parseFloat(jogNoTime.preco);
+                        valorAtualDoElenco += precoHoje;
+                    });
                 }
 
-                // Transforma o objeto em lista e calcula o valor total de cada time
-                let listaRanking = Object.keys(contasData).map(id => {
-                    const conta = contasData[id];
-                    
-                    // Soma o valor dos jogadores comprados (Elenco)
-                    let valorElenco = 0;
-                    if (conta.elenco) {
-                        Object.values(conta.elenco).forEach(jog => {
-                            valorElenco += parseFloat(jog.preco) || 0;
-                        });
-                    }
+                // Patrimônio Total = Dinheiro em caixa + Valorização dos Jogadores
+                const patrimonioTotal = (parseFloat(conta.saldo) || 0) + valorAtualDoElenco;
+                const pontos = parseFloat(conta.pontosTotais) || 0;
 
-                    return {
-                        nome: conta.nomeTime,
-                        total: (parseFloat(conta.saldo) || 0) + valorElenco
-                    };
-                });
+                return {
+                    nome: conta.nomeTime,
+                    pontos: pontos,
+                    patrimonio: patrimonioTotal
+                };
+            });
 
-                // Ordena do maior para o menor
-                listaRanking.sort((a, b) => b.total - a.total);
+            // 4. Ordenação: Quem tem o maior Patrimônio Total (Saldo + Valorização)
+            listaRanking.sort((a, b) => b.patrimonio - a.patrimonio);
 
-                // Limpa e preenche a tabela
-                corpo.innerHTML = "";
-                listaRanking.forEach((item, index) => {
-                    corpo.innerHTML += `
-                        <tr>
-                            <td class="posicao">${index + 1}º</td>
-                            <td>${item.nome}</td>
-                            <td class="valor">C$ ${item.total.toFixed(2)}</td>
-                        </tr>
-                    `;
-                });
+            corpo.innerHTML = "";
+            listaRanking.forEach((item, index) => {
+                corpo.innerHTML += `
+                    <tr>
+                        <td class="posicao">${index + 1}º</td>
+                        <td>
+                            <div style="font-weight:bold;">${item.nome}</div>
+                            <div style="font-size:0.75rem; color:#4cd137;">Pts: ${item.pontos.toFixed(1)}</div>
+                        </td>
+                        <td class="valor">C$ ${item.patrimonio.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
 
-            } catch (error) {
-                corpo.innerHTML = "<tr><td colspan='3'>Erro ao conectar com o banco.</td></tr>";
-            }
+        } catch (error) {
+            console.error(error);
+            corpo.innerHTML = "<tr><td colspan='3'>Erro ao sincronizar ranking.</td></tr>";
         }
+    }
 
-        carregarRanking();
-    </script>
+    carregarRanking();
+</script>
 </body>
 </html>
