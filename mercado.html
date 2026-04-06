@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercado - Cartola Interclasse</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a2e;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            background-color: #0f3460;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .header h2 { margin: 0; color: #e94560; }
+        .saldo { font-size: 1.5rem; font-weight: bold; color: #4cd137; }
+        
+        .grid-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            flex-wrap: wrap;
+        }
+        .coluna {
+            flex: 1;
+            min-width: 300px;
+            background-color: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h3 { border-bottom: 2px solid #e94560; padding-bottom: 10px; margin-top: 0; }
+        
+        .card-jogador {
+            background-color: #1a1a2e;
+            border: 1px solid #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .foto-perfil {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e94560;
+            margin-right: 15px;
+        }
+        .info-container {
+            display: flex;
+            align-items: center;
+        }
+        .info-jogador { display: flex; flex-direction: column; }
+        .nome { font-weight: bold; font-size: 1.1rem; }
+        .posicao { font-size: 0.8rem; color: #a2a2bd; background: #0f3460; padding: 3px 6px; border-radius: 4px; width: fit-content; margin-top: 5px;}
+        .preco { font-weight: bold; color: #fbc531; }
+        
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-comprar { background-color: #4cd137; color: #1a1a2e; }
+        .btn-comprar:hover { background-color: #44bd32; }
+        .btn-vender { background-color: #e84118; color: white; }
+        .btn-vender:hover { background-color: #c23616; }
+
+        a.voltar { color: #a2a2bd; text-decoration: none; margin-bottom: 20px; display: block; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="voltar">⬅ Sair do Mercado</a>
+
+    <div class="header">
+        <div>
+            <h2 id="displayNomeTime">Carregando...</h2>
+            <span style="color: #a2a2bd;">Treinador: <span id="displayTreinador"></span></span>
+        </div>
+        <div class="saldo">C$ <span id="displaySaldo">0.00</span></div>
+    </div>
+
+    <div class="grid-container">
+        <div class="coluna">
+            <h3>Mercado (Disponíveis)</h3>
+            <div id="listaMercado"></div>
+        </div>
+
+        <div class="coluna">
+            <h3>Meu Elenco</h3>
+            <div id="listaMeuElenco"></div>
+        </div>
+    </div>
+
+    <script>
+    const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+    const avatarPadrao = 'https://www.pngall.com/wp-content/uploads/5/Profile-Avatar-PNG.png';
+
+    let logadoLocal = JSON.parse(localStorage.getItem('usuario_logado'));
+
+    if (!logadoLocal) {
+        window.location.href = "index.html";
+    }
+
+    const domTime = document.getElementById('displayNomeTime');
+    const domTreinador = document.getElementById('displayTreinador');
+    const domSaldo = document.getElementById('displaySaldo');
+    const domMercado = document.getElementById('listaMercado');
+    const domElenco = document.getElementById('listaMeuElenco');
+
+    async function atualizarTela() {
+        // 1. Puxa dados atualizados do usuário e de todos os jogadores
+        const [resContas, resJog] = await Promise.all([
+            fetch(`${DB_URL}/contas.json`),
+            fetch(`${DB_URL}/jogadores.json`)
+        ]);
+
+        const contasData = await resContas.json();
+        const jogadoresData = await resJog.json();
+        
+        // Acha a conta do cara na nuvem
+        const idFirebase = Object.keys(contasData).find(id => contasData[id].nomeTime === logadoLocal.nomeTime);
+        const minhaConta = contasData[idFirebase];
+
+        // Transforma jogadores da nuvem em lista (Mercado)
+        const mercadoGlobal = jogadoresData ? Object.keys(jogadoresData).map(id => ({ id, ...jogadoresData[id] })) : [];
+
+        // Atualiza cabeçalho
+        domTime.innerText = minhaConta.nomeTime;
+        domTreinador.innerText = minhaConta.treinador || "Logado";
+        domSaldo.innerText = parseFloat(minhaConta.saldo).toFixed(2);
+
+        domMercado.innerHTML = '';
+        domElenco.innerHTML = '';
+
+        // 2. Renderiza o Mercado
+        mercadoGlobal.forEach((jogador) => {
+            // Verifica se o jogador já está no elenco (compara por nome)
+            const jaComprado = minhaConta.elenco && Object.values(minhaConta.elenco).find(j => j.nome === jogador.nome);
+            
+            if (!jaComprado) {
+                domMercado.innerHTML += `
+                    <div class="card-jogador">
+                        <div class="info-container">
+                            <img src="${jogador.foto || avatarPadrao}" class="foto-perfil" referrerpolicy="no-referrer" onerror="this.src='${avatarPadrao}'">
+                            <div class="info-jogador">
+                                <span class="nome">${jogador.nome}</span>
+                                <span class="posicao">${jogador.posicao || 'Jogador'}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="preco">C$ ${jogador.preco}</div>
+                            <button class="btn-comprar" onclick="comprarJogador('${idFirebase}', ${JSON.stringify(jogador).replace(/"/g, '&quot;')})">Comprar</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // 3. Renderiza o Meu Elenco
+        if (!minhaConta.elenco || Object.keys(minhaConta.elenco).length === 0) {
+            domElenco.innerHTML = '<p style="color: #a2a2bd; text-align:center;">Seu time está vazio.</p>';
+        } else {
+            Object.keys(minhaConta.elenco).forEach((idNoElenco) => {
+                const jogador = minhaConta.elenco[idNoElenco];
+                domElenco.innerHTML += `
+                    <div class="card-jogador">
+                        <div class="info-container">
+                            <img src="${jogador.foto || avatarPadrao}" class="foto-perfil" referrerpolicy="no-referrer" onerror="this.src='${avatarPadrao}'">
+                            <div class="info-jogador">
+                                <span class="nome">${jogador.nome}</span>
+                                <span class="posicao">${jogador.posicao || 'Jogador'}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="preco">C$ ${jogador.preco}</div>
+                            <button class="btn-vender" onclick="venderJogador('${idFirebase}', '${idNoElenco}', ${jogador.preco})">Vender</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    }
+
+    async function comprarJogador(idConta, jogador) {
+        const res = await fetch(`${DB_URL}/contas/${idConta}.json`);
+        const conta = await res.json();
+
+        if (parseFloat(conta.saldo) >= parseFloat(jogador.preco)) {
+            const novoSaldo = (parseFloat(conta.saldo) - parseFloat(jogador.preco)).toFixed(2);
+            
+            await fetch(`${DB_URL}/contas/${idConta}.json`, {
+                method: 'PATCH',
+                body: JSON.stringify({ saldo: novoSaldo })
+            });
+
+            await fetch(`${DB_URL}/contas/${idConta}/elenco.json`, {
+                method: 'POST',
+                body: JSON.stringify(jogador)
+            });
+
+            atualizarTela();
+        } else {
+            alert("Saldo insuficiente!");
+        }
+    }
+
+    async function venderJogador(idConta, idItemNoElenco, precoJogador) {
+        const res = await fetch(`${DB_URL}/contas/${idConta}.json`);
+        const conta = await res.json();
+
+        const novoSaldo = (parseFloat(conta.saldo) + parseFloat(precoJogador)).toFixed(2);
+
+        await fetch(`${DB_URL}/contas/${idConta}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({ saldo: novoSaldo })
+        });
+
+        await fetch(`${DB_URL}/contas/${idConta}/elenco/${idItemNoElenco}.json`, {
+            method: 'DELETE'
+        });
+
+        atualizarTela();
+    }
+
+    atualizarTela();
+</script>
+
+</body>
+</html>

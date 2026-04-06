@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Cartola Interclasse</title>
+    <style>
+        /* Visual Moderno e "Clean" */
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%); 
+            color: white; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+
+        .login-card { 
+            background: rgba(22, 33, 62, 0.8); 
+            padding: 40px; 
+            border-radius: 15px; 
+            width: 320px; 
+            text-align: center; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            backdrop-filter: blur(10px); /* Efeito de vidro */
+        }
+
+        h2 { color: #e94560; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            border: 2px solid #1a1a2e; 
+            background: #0f3460; 
+            color: white; 
+            box-sizing: border-box; 
+            transition: 0.3s;
+        }
+
+        input:focus { border-color: #e94560; outline: none; }
+
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background: linear-gradient(45deg, #e94560, #950740); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4); }
+
+        .toggle-link { color: #a2a2bd; font-size: 0.85rem; cursor: pointer; display: block; margin-top: 20px; }
+        .toggle-link b { color: #e94560; }
+
+        .escondido { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="login-card" id="loginBox">
+    <h2>Login ⚽</h2>
+    <input type="text" id="user" placeholder="Nome do Time">
+    <input type="password" id="pass" placeholder="Senha">
+    <button onclick="logar()">Entrar</button>
+    <span class="toggle-link" onclick="mostrarCadastro()">Não tem time? <b>Criar Conta</b></span>
+</div>
+
+<div class="login-card escondido" id="cadastroBox">
+    <h2>Criar Conta 🛡️</h2>
+    <input type="text" id="cadUser" placeholder="Nome do Time">
+    <input type="text" id="cadTreinador" placeholder="Nome do Treinador">
+    <input type="password" id="cadPass" placeholder="Senha">
+    <button onclick="cadastrar()">Finalizar</button>
+    <span class="toggle-link" onclick="mostrarLogin()">Já tem conta? <b>Fazer Login</b></span>
+</div>
+
+<script>
+    const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+
+    // Funções para trocar de tela
+    function mostrarCadastro() {
+        document.getElementById('loginBox').classList.add('escondido');
+        document.getElementById('cadastroBox').classList.remove('escondido');
+    }
+
+    function mostrarLogin() {
+        document.getElementById('cadastroBox').classList.add('escondido');
+        document.getElementById('loginBox').classList.remove('escondido');
+    }
+
+    // Lógica de Login (Busca no Firebase)
+    async function logar() {
+        const user = document.getElementById('user').value;
+        const pass = document.getElementById('pass').value;
+
+        // LOGIN DO ADMIN
+        if (user === 'admin' && pass === 'sixseven69') {
+            sessionStorage.setItem('logado', 'admin');
+            window.location.href = 'admin.html';
+            return;
+        }
+
+        const res = await fetch(`${DB_URL}/contas.json`);
+        const contas = await res.json();
+
+        if (contas) {
+            // Procura o time e a senha na nuvem
+            const id = Object.keys(contas).find(k => contas[k].nomeTime === user && contas[k].senha === pass);
+            
+            if (id) {
+                // Salva a sessão para as outras páginas usarem
+                localStorage.setItem('usuario_logado', JSON.stringify(contas[id]));
+                window.location.href = 'menu.html';
+            } else {
+                alert("Usuário ou senha incorretos!");
+            }
+        } else {
+            alert("Nenhuma conta encontrada!");
+        }
+    }
+
+    // Lógica de Cadastro (Envia para o Firebase)
+    async function cadastrar() {
+        const nomeTime = document.getElementById('cadUser').value;
+        const treinador = document.getElementById('cadTreinador').value;
+        const senha = document.getElementById('cadPass').value;
+
+        if (!nomeTime || !treinador || !senha) return alert("Preencha tudo!");
+
+        const novaConta = {
+            nomeTime,
+            treinador,
+            senha,
+            saldo: 100,
+            pontosTotais: 0,
+            elenco: {},
+            escalacao: {}
+        };
+
+        await fetch(`${DB_URL}/contas.json`, {
+            method: 'POST',
+            body: JSON.stringify(novaConta)
+        });
+
+        alert("Time fundado com sucesso!");
+        mostrarLogin();
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Menu Principal - Cartola</title>
+    <style>
+        body { font-family: Arial; background: #1a1a2e; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .menu-container { background: #16213e; padding: 30px; border-radius: 15px; text-align: center; width: 300px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        h1 { color: #e94560; margin-bottom: 20px; }
+        .btn-menu { display: block; width: 100%; padding: 15px; margin: 10px 0; background: #0f3460; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: 0.3s; border: 1px solid #e94560; }
+        .btn-menu:hover { background: #e94560; transform: scale(1.05); }
+        .btn-sair { color: #a2a2bd; text-decoration: none; margin-top: 20px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="menu-container">
+        <h1 id="boasVindas">Olá!</h1>
+        <a href="meu-time.html" class="btn-menu">🏟️ Meu Time (Escalação)</a>
+        <a href="mercado.html" class="btn-menu">🛒 Mercado</a>
+        <a href="ranking.html" class="btn-menu">🏆 Ranking Geral</a>
+        
+        <a href="index.html" class="btn-sair" onclick="localStorage.removeItem('usuario_logado')">Sair da Conta</a>
+    </div>
+
+    <script>
+        let conta = JSON.parse(localStorage.getItem('usuario_logado'));
+        if (!conta) { window.location.href = 'index.html'; }
+        document.getElementById('boasVindas').innerText = "Time: " + conta.nomeTime;
+    </script>
+</body>
+</html>

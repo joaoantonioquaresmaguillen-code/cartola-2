@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Admin - Interclasse</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial; background: #1a1a2e; color: white; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #16213e; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { color: #e94560; border-bottom: 2px solid #e94560; padding-bottom: 10px; margin-top: 30px; }
+        .form-cadastro { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        input, select { padding: 12px; border-radius: 8px; border: none; background: #0f3460; color: white; }
+        .card-adm { background: #1a1a2e; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #e94560; }
+        .scouts-grid { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-top: 10px; }
+        .scout-item { display: flex; flex-direction: column; font-size: 0.8rem; color: #a2a2bd; }
+        .scout-item input { width: 60px; text-align: center; margin-top: 5px; }
+        .btn-lancar { background: #4cd137; color: #1a1a2e; font-weight: bold; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .btn-excluir { background: #ff4757; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; float: right; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="menu.html" style="color: #a2a2bd; text-decoration: none;">⬅ Voltar ao Menu</a>
+    
+    <h2>🆕 Cadastrar Atleta</h2>
+    <div class="form-cadastro">
+        <input type="text" id="nome" placeholder="Nome do Jogador">
+        <select id="posicao">
+            <option value="Goleiro">Goleiro 🧤</option>
+            <option value="Fixo">Fixo 🛡️</option>
+            <option value="Ala Direita">Ala Direita ⚡</option>
+            <option value="Ala Esquerda">Ala Esquerda ⚡</option>
+        </select>
+        <input type="number" id="preco" placeholder="Preço Inicial (C$)">
+        <input type="text" id="foto" placeholder="Link da Foto (URL)" style="grid-column: span 2;">
+        <button onclick="cadastrarJogador()" style="background:#e94560; color:white; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">CRIAR JOGADOR</button>
+    </div>
+
+    <h2>⚽ Jogadores no Sistema</h2>
+    <div id="listaJogadoresAdm">Buscando jogadores no Firebase...</div>
+</div>
+
+<script>
+    // MESMA URL DO MERCADO
+    const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+
+    // 1. CARREGAR JOGADORES (O CORAÇÃO DO PROBLEMA)
+    async function carregarJogadores() {
+        const lista = document.getElementById('listaJogadoresAdm');
+        
+        try {
+            const res = await fetch(`${DB_URL}/jogadores.json`);
+            const dados = await res.json();
+            
+            lista.innerHTML = "";
+            
+            if (!dados) {
+                lista.innerHTML = "<p>Nenhum jogador encontrado no Firebase. Cadastre um acima!</p>";
+                return;
+            }
+
+            // Mapeia o objeto do Firebase para podermos editar
+            Object.keys(dados).forEach(id => {
+                const jog = dados[id];
+                const isGoleiro = jog.posicao === "Goleiro";
+
+                let camposScout = isGoleiro ? `
+                    <div class="scout-item"><label>Defesas</label><input type="number" id="def-${id}" value="0"></div>
+                    <div class="scout-item"><label>Gols Sofr.</label><input type="number" id="gs-${id}" value="0"></div>
+                ` : `
+                    <div class="scout-item"><label>Gols</label><input type="number" id="gol-${id}" value="0"></div>
+                    <div class="scout-item"><label>Assists</label><input type="number" id="ass-${id}" value="0"></div>
+                `;
+
+                lista.innerHTML += `
+                    <div class="card-adm">
+                        <button class="btn-excluir" onclick="excluirJogador('${id}')">Excluir</button>
+                        <strong>${jog.nome}</strong> <span style="color:#e94560">(${jog.posicao})</span>
+                        <br><small>Preço Atual: C$ ${jog.preco}</small>
+                        
+                        <div class="scouts-grid">
+                            ${camposScout}
+                            <div class="scout-item"><label>Nota (1-5)</label><input type="number" id="nota-${id}" value="1" min="1" max="5"></div>
+                            <button class="btn-lancar" onclick="encerrarRodadaAtleta('${id}')">SALVAR PONTOS</button>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (erro) {
+            lista.innerHTML = "Erro ao conectar com o Firebase!";
+            console.error(erro);
+        }
+    }
+
+    // 2. CADASTRAR (SALVA NO MESMO LUGAR QUE O MERCADO LÊ)
+    async function cadastrarJogador() {
+        const nome = document.getElementById('nome').value;
+        const posicao = document.getElementById('posicao').value;
+        const preco = parseFloat(document.getElementById('preco').value);
+        const foto = document.getElementById('foto').value;
+
+        if(!nome || !preco) return alert("Preencha nome e preço!");
+
+        const novoAtleta = { 
+            nome, 
+            posicao, 
+            preco: preco.toFixed(2), 
+            foto: foto || "", 
+            pontos: 0 
+        };
+
+        await fetch(`${DB_URL}/jogadores.json`, { 
+            method: 'POST', 
+            body: JSON.stringify(novoAtleta) 
+        });
+        
+        alert("Atleta criado com sucesso!");
+        carregarJogadores(); // Recarrega a lista na hora
+    }
+
+    // 3. EXCLUIR DO FIREBASE
+    async function excluirJogador(id) {
+        if(confirm("Deseja mesmo remover este jogador do sistema?")) {
+            await fetch(`${DB_URL}/jogadores/${id}.json`, { method: 'DELETE' });
+            carregarJogadores();
+        }
+    }
+
+    // 4. LÓGICA DE PONTUAÇÃO E VALORIZAÇÃO
+    async function encerrarRodadaAtleta(id) {
+        const res = await fetch(`${DB_URL}/jogadores/${id}.json`);
+        const jog = await res.json();
+
+        const nota = parseInt(document.getElementById(`nota-${id}`).value) || 1;
+        let pontosNota = Math.max(0, nota - 1); 
+
+        const multGeral = 2.5;
+        const buffGoleiro = 2.0;
+        let pontosBase = 0;
+
+        if (jog.posicao === "Goleiro") {
+            const defesas = parseInt(document.getElementById(`def-${id}`).value) || 0;
+            const gs = parseInt(document.getElementById(`gs-${id}`).value) || 0;
+            pontosBase = ((defesas * 5) + (gs === 0 ? 15 : 0) + (gs * -2) + pontosNota) * buffGoleiro;
+        } else {
+            const gols = parseInt(document.getElementById(`gol-${id}`).value) || 0;
+            const ass = parseInt(document.getElementById(`ass-${id}`).value) || 0;
+            pontosBase = (gols * 8) + (ass * 5) + pontosNota;
+        }
+
+        const pontosFinais = pontosBase * multGeral;
+        const valorizacao = pontosFinais / 5;
+        const novoPreco = Math.max(1, parseFloat(jog.preco) + valorizacao);
+
+        // Salva no Jogador
+        await fetch(`${DB_URL}/jogadores/${id}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({ 
+                pontos: pontosFinais.toFixed(1),
+                preco: novoPreco.toFixed(2)
+            })
+        });
+
+        // Sincroniza com quem escalou ele (Obrigatório para o Ranking funcionar)
+        await atualizarPontosNosTimes(jog.nome, pontosFinais);
+
+        alert(`${jog.nome} atualizado! Fez ${pontosFinais.toFixed(1)} pontos.`);
+        carregarJogadores();
+    }
+
+    async function atualizarPontosNosTimes(nomeAtleta, pts) {
+        const res = await fetch(`${DB_URL}/contas.json`);
+        const contas = await res.json();
+        if(!contas) return;
+
+        for (let idC in contas) {
+            // Verifica se o atleta está na escalação (campo) do usuário
+            const noTime = contas[idC].escalacao && Object.values(contas[idC].escalacao).find(j => j.nome === nomeAtleta);
+            if (noTime) {
+                const novosPontos = (parseFloat(contas[idC].pontosTotais) || 0) + pts;
+                await fetch(`${DB_URL}/contas/${idC}.json`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ pontosTotais: novosPontos.toFixed(1) })
+                });
+            }
+        }
+    }
+
+    // Inicializa a lista ao abrir
+    carregarJogadores();
+</script>
+</body>
+</html>

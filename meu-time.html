@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Time - Cartola Interclasse</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #1a1a2e; color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { width: 100%; max-width: 500px; text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #e94560; }
+        .formacao-seletor { background: #16213e; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        select { padding: 8px; border-radius: 5px; background: #0f3460; color: white; border: 1px solid #e94560; }
+        
+        .campo { 
+            width: 100%; max-width: 350px; height: 500px; background-color: #27ae60; 
+            border: 5px solid white; border-radius: 15px; position: relative;
+            background-image: linear-gradient(rgba(255,255,255,0.1) 2px, transparent 2px);
+            background-size: 100% 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .linha-meio { position: absolute; top: 50%; width: 100%; height: 2px; background: white; }
+        
+        .posicao-slot { position: absolute; width: 70px; display: flex; flex-direction: column; align-items: center; transform: translateX(-50%); cursor: pointer; }
+        .foto-jogador { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fbc531; background: #0f3460; object-fit: cover; }
+        .nome-jogador { background: rgba(0, 0, 0, 0.7); padding: 2px 5px; border-radius: 4px; font-size: 0.7rem; margin-top: 5px; text-align: center; width: 80px; }
+
+        /* Modal de Escolha */
+        #modalEscolha { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; padding:20px; box-sizing:border-box; overflow-y: auto; }
+        .opcao-card { background:#0f3460; padding:10px; border-radius:8px; display:flex; align-items:center; gap:15px; margin-bottom:10px; border:1px solid #e94560; }
+
+        .btn-acao { margin-top: 20px; padding: 15px; background: #4cd137; color: #1a1a2e; text-decoration: none; font-weight: bold; border-radius: 8px; width: 200px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2 id="nomeTimeDisplay">Carregando...</h2>
+        <div class="formacao-seletor">
+            <label>Tática: </label>
+            <select id="selectFormacao" onchange="renderizarCampo()">
+                <option value="2-2">2-2 (Padrão)</option>
+                <option value="3-1">3-1 (Defensivo)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="campo" id="campoFutebol">
+        <div class="linha-meio"></div>
+        <div id="slots-jogadores"></div>
+    </div>
+
+    <a href="menu.html" class="btn-acao">Voltar ao Menu</a>
+
+    <div id="modalEscolha">
+        <h2 style="text-align:center;">Quem vai pro jogo?</h2>
+        <div id="listaOpcoes"></div>
+        <button onclick="fecharModal()" style="width:100%; padding:10px; background:#e94560; color:white; border:none; border-radius:5px; margin-top:10px;">Cancelar</button>
+    </div>
+
+    <script>
+        const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+        const avatarPadrao = 'https://www.pngall.com/wp-content/uploads/5/Profile-Avatar-PNG.png';
+        let logadoLocal = JSON.parse(localStorage.getItem('usuario_logado'));
+        let idUsuarioFirebase = "";
+        let slotSelecionado = "";
+
+        if (!logadoLocal) window.location.href = "index.html";
+
+        async function inicializar() {
+            // Acha o ID do usuário no Firebase
+            const res = await fetch(`${DB_URL}/contas.json`);
+            const contas = await res.json();
+            idUsuarioFirebase = Object.keys(contas).find(id => contas[id].nomeTime === logadoLocal.nomeTime);
+            
+            document.getElementById('nomeTimeDisplay').innerText = contas[idUsuarioFirebase].nomeTime;
+            renderizarCampo();
+        }
+
+        async function renderizarCampo() {
+            const slotsContainer = document.getElementById('slots-jogadores');
+            const formacao = document.getElementById('selectFormacao').value;
+            slotsContainer.innerHTML = '';
+
+            // Busca a escalação salva na nuvem
+            const resEsc = await fetch(`${DB_URL}/contas/${idUsuarioFirebase}/escalacao.json`);
+            const escalacao = await resEsc.json() || {};
+
+            const taticas = {
+                "2-2": [
+                    { id: 'gol', t: 82, l: 50, label: 'Goleiro' },
+                    { id: 'def1', t: 62, l: 25, label: 'Zagueiro' },
+                    { id: 'def2', t: 62, l: 75, label: 'Zagueiro' },
+                    { id: 'ata1', t: 25, l: 25, label: 'Atacante' },
+                    { id: 'ata2', t: 25, l: 75, label: 'Atacante' }
+                ],
+                "3-1": [
+                    { id: 'gol', t: 82, l: 50, label: 'Goleiro' },
+                    { id: 'def1', t: 68, l: 20, label: 'Zagueiro' },
+                    { id: 'def2', t: 68, l: 50, label: 'Zagueiro' },
+                    { id: 'def3', t: 68, l: 80, label: 'Zagueiro' },
+                    { id: 'ata1', t: 20, l: 50, label: 'Atacante' }
+                ]
+            };
+
+            taticas[formacao].forEach(pos => {
+                const jog = escalacao[pos.id];
+                const foto = jog ? (jog.foto || avatarPadrao) : avatarPadrao;
+                const nome = jog ? jog.nome : `Escolher ${pos.label}`;
+
+                slotsContainer.innerHTML += `
+                    <div class="posicao-slot" style="top: ${pos.t}%; left: ${pos.l}%;" onclick="abrirModal('${pos.id}')">
+                        <img src="${foto}" class="foto-jogador" referrerpolicy="no-referrer" style="${!jog ? 'opacity:0.5;' : ''}" onerror="this.src='${avatarPadrao}'">
+                        <div class="nome-jogador">${nome}</div>
+                    </div>
+                `;
+            });
+        }
+
+        async function abrirModal(idSlot) {
+            slotSelecionado = idSlot;
+            const res = await fetch(`${DB_URL}/contas/${idUsuarioFirebase}.json`);
+            const conta = await res.json();
+            
+            const elenco = conta.elenco ? Object.values(conta.elenco) : [];
+            const escalados = conta.escalacao ? Object.values(conta.escalacao).map(j => j.nome) : [];
+            
+            const lista = document.getElementById('listaOpcoes');
+            lista.innerHTML = '';
+
+            const disponiveis = elenco.filter(j => !escalados.includes(j.nome));
+
+            if (disponiveis.length === 0) {
+                lista.innerHTML = '<p style="text-align:center;">Nenhum jogador disponível (ou já estão todos no campo).</p>';
+            }
+
+            disponiveis.forEach(jog => {
+                lista.innerHTML += `
+                    <div class="opcao-card" onclick="confirmarEscalacao('${jog.nome}', '${jog.foto}')">
+                        <img src="${jog.foto || avatarPadrao}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
+                        <span>${jog.nome}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('modalEscolha').style.display = 'block';
+        }
+
+        async function confirmarEscalacao(nome, foto) {
+            // Salva a escolha no Firebase dentro da pasta 'escalacao' do usuário
+            await fetch(`${DB_URL}/contas/${idUsuarioFirebase}/escalacao/${slotSelecionado}.json`, {
+                method: 'PUT', // PUT substitui o que tem no slot específico
+                body: JSON.stringify({ nome, foto })
+            });
+            fecharModal();
+            renderizarCampo();
+        }
+
+        function fecharModal() { document.getElementById('modalEscolha').style.display = 'none'; }
+
+        inicializar();
+    </script>
+</body>
+</html>

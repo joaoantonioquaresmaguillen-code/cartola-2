@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Cartola Interclasse</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 { color: #e94560; margin-bottom: 5px; }
+        p { color: #a2a2bd; margin-bottom: 25px; }
+        .container {
+            background-color: #16213e;
+            padding: 30px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 5px;
+            border: none;
+            box-sizing: border-box;
+            font-size: 1rem;
+            background: #f0f0f0;
+        }
+        button {
+            width: 100%;
+            background-color: #e94560;
+            color: white;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 25px;
+            border: none;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover { background-color: #ff4d6d; }
+        .toggle-link {
+            margin-top: 20px;
+            display: block;
+            color: #a2a2bd;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .toggle-link b { color: #e94560; }
+        
+        /* Classe para esconder as caixas */
+        .escondido { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="box-login">
+        <h1>Entrar ⚽</h1>
+        <p>Acesse seu time para escalar e ver o mercado.</p>
+        
+        <input type="text" id="login-user" placeholder="Nome do seu Time">
+        <input type="password" id="login-pass" placeholder="Sua Senha">
+        
+        <button onclick="logar()">Entrar no Jogo</button>
+        
+        <span class="toggle-link" onclick="alternar('box-cadastro')">
+            Não tem um time? <b>Criar Conta</b>
+        </span>
+    </div>
+
+    <div class="container escondido" id="box-cadastro">
+        <h1>Crie seu Time 🛡️</h1>
+        <p>Ganhe <strong>C$ 100</strong> iniciais!</p>
+        
+        <input type="text" id="cad-treinador" placeholder="Seu Nome (Treinador)">
+        <input type="text" id="cad-time" placeholder="Nome do Time">
+        <input type="password" id="cad-pass" placeholder="Crie uma Senha">
+        
+        <button onclick="cadastrar()">Cadastrar e Jogar</button>
+        
+        <span class="toggle-link" onclick="alternar('box-login')">
+            Já tem conta? <b>Fazer Login</b>
+        </span>
+    </div>
+
+    <script>
+        // Função para trocar entre Login e Cadastro
+        function alternar(idAlvo) {
+            document.getElementById('box-login').classList.add('escondido');
+            document.getElementById('box-cadastro').classList.add('escondido');
+            document.getElementById(idAlvo).classList.remove('escondido');
+        }
+
+        // --- LÓGICA DE LOGIN ---
+        const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
+
+// --- FUNÇÃO DE LOGIN NA NUVEM ---
+async function logar() {
+    const user = document.getElementById('login-user').value;
+    const pass = document.getElementById('login-pass').value;
+
+    // Login do ADM continua local por segurança (ou você pode por na nuvem dps)
+    if (user === 'admin' && pass === 'sixseven69') {
+        sessionStorage.setItem('logado', 'admin');
+        window.location.href = 'admin.html';
+        return;
+    }
+
+    // Busca todas as contas na nuvem
+    const resposta = await fetch(`${DB_URL}/contas.json`);
+    const contasData = await resposta.json();
+
+    if (contasData) {
+        // Transforma o objeto do Firebase em array e procura o time
+        const listaContas = Object.keys(contasData).map(id => ({ id, ...contasData[id] }));
+        const conta = listaContas.find(c => c.nomeTime === user && c.senha === pass);
+
+        if (conta) {
+            // Salva a sessão atual (quem está logado agora)
+            localStorage.setItem('usuario_logado', JSON.stringify(conta));
+            window.location.href = 'menu.html';
+        } else {
+            alert("Time ou senha incorretos!");
+        }
+    } else {
+        alert("Nenhum time cadastrado no sistema!");
+    }
+}
+
+// --- FUNÇÃO DE CADASTRO NA NUVEM ---
+async function cadastrar() {
+    const treinador = document.getElementById('cad-treinador').value;
+    const nomeTime = document.getElementById('cad-time').value;
+    const senha = document.getElementById('cad-pass').value;
+
+    if (!treinador || !nomeTime || !senha) return alert("Preencha tudo!");
+
+    // Verifica se já existe esse nome de time na nuvem
+    const respostaBusca = await fetch(`${DB_URL}/contas.json`);
+    const contasExistentes = await respostaBusca.json();
+    
+    if (contasExistentes) {
+        const nomesNoBD = Object.values(contasExistentes).map(c => c.nomeTime);
+        if (nomesNoBD.includes(nomeTime)) {
+            alert("Esse nome de time já existe!");
+            return;
+        }
+    }
+
+    const novaConta = {
+        treinador: treinador,
+        nomeTime: nomeTime,
+        senha: senha,
+        saldo: 100,
+        pontosTotais: 0,
+        elenco: []
+    };
+
+    // Salva a nova conta na nuvem
+    await fetch(`${DB_URL}/contas.json`, {
+        method: 'POST',
+        body: JSON.stringify(novaConta)
+    });
+
+    alert("Time criado na nuvem! Agora faça o login.");
+    alternar('box-login');
+}
+    </script>
+</body>
+</html>
