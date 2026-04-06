@@ -5,111 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mercado - Cartola Interclasse</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #1a1a2e;
-            color: white;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .header {
-            background-color: #0f3460;
-            width: 100%;
-            max-width: 800px;
-            padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
+        body { font-family: 'Segoe UI', Arial; background-color: #1a1a2e; color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { background-color: #0f3460; width: 100%; max-width: 900px; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-sizing: border-box; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .header h2 { margin: 0; color: #e94560; }
         .saldo { font-size: 1.5rem; font-weight: bold; color: #4cd137; }
-        
-        .grid-container {
-            display: flex;
-            gap: 20px;
-            width: 100%;
-            max-width: 800px;
-            flex-wrap: wrap;
-        }
-        .coluna {
-            flex: 1;
-            min-width: 300px;
-            background-color: #16213e;
-            padding: 20px;
-            border-radius: 10px;
-        }
+        .grid-container { display: flex; gap: 20px; width: 100%; max-width: 900px; flex-wrap: wrap; }
+        .coluna { flex: 1; min-width: 320px; background-color: #16213e; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         h3 { border-bottom: 2px solid #e94560; padding-bottom: 10px; margin-top: 0; }
-        
-        .card-jogador {
-            background-color: #1a1a2e;
-            border: 1px solid #0f3460;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .foto-perfil {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e94560;
-            margin-right: 15px;
-        }
-        .info-container {
-            display: flex;
-            align-items: center;
-        }
+        .card-jogador { background-color: #1a1a2e; border: 1px solid #0f3460; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .foto-perfil { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #e94560; margin-right: 15px; }
+        .info-container { display: flex; align-items: center; }
         .info-jogador { display: flex; flex-direction: column; }
         .nome { font-weight: bold; font-size: 1.1rem; }
         .posicao { font-size: 0.8rem; color: #a2a2bd; background: #0f3460; padding: 3px 6px; border-radius: 4px; width: fit-content; margin-top: 5px;}
-        .preco { font-weight: bold; color: #fbc531; }
-        
-        button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
+        .preco { font-weight: bold; color: #fbc531; margin-bottom: 8px; font-size: 1.1rem; }
+        button { padding: 8px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-comprar { background-color: #4cd137; color: #1a1a2e; }
         .btn-comprar:hover { background-color: #44bd32; }
         .btn-vender { background-color: #e84118; color: white; }
         .btn-vender:hover { background-color: #c23616; }
-
-        a.voltar { color: #a2a2bd; text-decoration: none; margin-bottom: 20px; display: block; }
+        a.voltar { color: #a2a2bd; text-decoration: none; margin-bottom: 20px; display: block; width: 100%; max-width: 900px; }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="voltar">⬅ Sair do Mercado</a>
+    <a href="menu.html" class="voltar">⬅ Voltar ao Menu</a>
 
     <div class="header">
         <div>
             <h2 id="displayNomeTime">Carregando...</h2>
             <span style="color: #a2a2bd;">Treinador: <span id="displayTreinador"></span></span>
         </div>
-        <div class="saldo">C$ <span id="displaySaldo">0.00</span></div>
+        <div style="text-align: right;">
+            <div style="color: #a2a2bd; font-size: 0.9rem;">Caixa (Livre)</div>
+            <div class="saldo">C$ <span id="displaySaldo">0.00</span></div>
+        </div>
     </div>
 
     <div class="grid-container">
         <div class="coluna">
             <h3>Mercado (Disponíveis)</h3>
-            <div id="listaMercado"></div>
+            <div id="listaMercado">Buscando jogadores...</div>
         </div>
 
         <div class="coluna">
             <h3>Meu Elenco</h3>
-            <div id="listaMeuElenco"></div>
+            <div id="listaMeuElenco">Buscando seu time...</div>
         </div>
     </div>
 
@@ -118,10 +59,7 @@
     const avatarPadrao = 'https://www.pngall.com/wp-content/uploads/5/Profile-Avatar-PNG.png';
 
     let logadoLocal = JSON.parse(localStorage.getItem('usuario_logado'));
-
-    if (!logadoLocal) {
-        window.location.href = "index.html";
-    }
+    if (!logadoLocal) window.location.href = "index.html";
 
     const domTime = document.getElementById('displayNomeTime');
     const domTreinador = document.getElementById('displayTreinador');
@@ -130,47 +68,49 @@
     const domElenco = document.getElementById('listaMeuElenco');
 
     async function atualizarTela() {
-        // 1. Puxa dados atualizados do usuário e de todos os jogadores
+        // Puxa sua conta e o mercado global ao mesmo tempo
         const [resContas, resJog] = await Promise.all([
             fetch(`${DB_URL}/contas.json`),
             fetch(`${DB_URL}/jogadores.json`)
         ]);
-
+        
         const contasData = await resContas.json();
         const jogadoresData = await resJog.json();
         
-        // Acha a conta do cara na nuvem
         const idFirebase = Object.keys(contasData).find(id => contasData[id].nomeTime === logadoLocal.nomeTime);
         const minhaConta = contasData[idFirebase];
-
-        // Transforma jogadores da nuvem em lista (Mercado)
         const mercadoGlobal = jogadoresData ? Object.keys(jogadoresData).map(id => ({ id, ...jogadoresData[id] })) : [];
+
+        // 1. CRIA UM DICIONÁRIO DE PREÇOS ATUAIS
+        // Isso serve para saber o preço que o jogador tem HOJE no mercado
+        const precosHoje = {};
+        mercadoGlobal.forEach(j => {
+            precosHoje[j.nome] = parseFloat(j.preco);
+        });
 
         // Atualiza cabeçalho
         domTime.innerText = minhaConta.nomeTime;
-        domTreinador.innerText = minhaConta.treinador || "Logado";
+        domTreinador.innerText = minhaConta.treinador;
         domSaldo.innerText = parseFloat(minhaConta.saldo).toFixed(2);
 
         domMercado.innerHTML = '';
         domElenco.innerHTML = '';
 
-        // 2. Renderiza o Mercado
+        // 2. RENDERIZA MERCADO
         mercadoGlobal.forEach((jogador) => {
-            // Verifica se o jogador já está no elenco (compara por nome)
             const jaComprado = minhaConta.elenco && Object.values(minhaConta.elenco).find(j => j.nome === jogador.nome);
-            
             if (!jaComprado) {
                 domMercado.innerHTML += `
                     <div class="card-jogador">
                         <div class="info-container">
-                            <img src="${jogador.foto || avatarPadrao}" class="foto-perfil" referrerpolicy="no-referrer" onerror="this.src='${avatarPadrao}'">
+                            <img src="${jogador.foto || avatarPadrao}" class="foto-perfil" onerror="this.src='${avatarPadrao}'">
                             <div class="info-jogador">
                                 <span class="nome">${jogador.nome}</span>
-                                <span class="posicao">${jogador.posicao || 'Jogador'}</span>
+                                <span class="posicao">${jogador.posicao}</span>
                             </div>
                         </div>
                         <div style="text-align: right;">
-                            <div class="preco">C$ ${jogador.preco}</div>
+                            <div class="preco">C$ ${parseFloat(jogador.preco).toFixed(2)}</div>
                             <button class="btn-comprar" onclick="comprarJogador('${idFirebase}', ${JSON.stringify(jogador).replace(/"/g, '&quot;')})">Comprar</button>
                         </div>
                     </div>
@@ -178,24 +118,28 @@
             }
         });
 
-        // 3. Renderiza o Meu Elenco
+        // 3. RENDERIZA MEU ELENCO (COM O PREÇO ATUALIZADO)
         if (!minhaConta.elenco || Object.keys(minhaConta.elenco).length === 0) {
             domElenco.innerHTML = '<p style="color: #a2a2bd; text-align:center;">Seu time está vazio.</p>';
         } else {
             Object.keys(minhaConta.elenco).forEach((idNoElenco) => {
-                const jogador = minhaConta.elenco[idNoElenco];
+                const jogadorSalvo = minhaConta.elenco[idNoElenco];
+                
+                // O PULO DO GATO: Mostra o preço que ele tem lá no mercado global hoje, e não o de ontem!
+                const precoAtual = precosHoje[jogadorSalvo.nome] || parseFloat(jogadorSalvo.preco);
+
                 domElenco.innerHTML += `
                     <div class="card-jogador">
                         <div class="info-container">
-                            <img src="${jogador.foto || avatarPadrao}" class="foto-perfil" referrerpolicy="no-referrer" onerror="this.src='${avatarPadrao}'">
+                            <img src="${jogadorSalvo.foto || avatarPadrao}" class="foto-perfil" onerror="this.src='${avatarPadrao}'">
                             <div class="info-jogador">
-                                <span class="nome">${jogador.nome}</span>
-                                <span class="posicao">${jogador.posicao || 'Jogador'}</span>
+                                <span class="nome">${jogadorSalvo.nome}</span>
+                                <span class="posicao">${jogadorSalvo.posicao}</span>
                             </div>
                         </div>
                         <div style="text-align: right;">
-                            <div class="preco">C$ ${jogador.preco}</div>
-                            <button class="btn-vender" onclick="venderJogador('${idFirebase}', '${idNoElenco}', ${jogador.preco})">Vender</button>
+                            <div class="preco" style="color:#4cd137;">C$ ${precoAtual.toFixed(2)}</div>
+                            <button class="btn-vender" onclick="venderJogador('${idFirebase}', '${idNoElenco}', '${jogadorSalvo.nome}')">Vender</button>
                         </div>
                     </div>
                 `;
@@ -203,6 +147,7 @@
         }
     }
 
+    // 4. COMPRAR JOGADOR
     async function comprarJogador(idConta, jogador) {
         const res = await fetch(`${DB_URL}/contas/${idConta}.json`);
         const conta = await res.json();
@@ -222,43 +167,45 @@
 
             atualizarTela();
         } else {
-            alert("Saldo insuficiente!");
+            alert("Caixa insuficiente para essa contratação!");
         }
     }
 
-    async function venderJogador(idConta, idItemNoElenco, nomeJogador) {
-    // 1. Primeiro, vamos no banco ver o preço ATUALIZADO desse cara no mercado
-    const resMercado = await fetch(`${DB_URL}/jogadores.json`);
-    const jogadoresData = await resMercado.json();
-    
-    // Procura o jogador pelo nome para saber o preço atual de mercado
-    const jogadorNoMercado = Object.values(jogadoresData).find(j => j.nome === nomeJogador);
-    const precoAtual = jogadorNoMercado ? parseFloat(jogadorNoMercado.preco) : 0;
+    // 5. VENDER JOGADOR (RECEBENDO A VALORIZAÇÃO)
+    async function venderJogador(idConta, idItemNoElenco, nomeDoJogador) {
+        // Primeiro: vai na nuvem ver quanto ele tá custando no mercado global AGORA
+        const resMercado = await fetch(`${DB_URL}/jogadores.json`);
+        const jogadoresNoMercado = await resMercado.json();
+        
+        let precoDeVenda = 0;
+        if (jogadoresNoMercado) {
+            const jogGlobal = Object.values(jogadoresNoMercado).find(j => j.nome === nomeDoJogador);
+            if (jogGlobal) precoDeVenda = parseFloat(jogGlobal.preco);
+        }
 
-    // 2. Busca os dados da sua conta
-    const resConta = await fetch(`${DB_URL}/contas/${idConta}.json`);
-    const conta = await resConta.json();
+        // Pega a conta pra ver o saldo atual
+        const resConta = await fetch(`${DB_URL}/contas/${idConta}.json`);
+        const conta = await resConta.json();
 
-    // 3. Calcula o novo saldo com o preço VALORIZADO
-    const novoSaldo = (parseFloat(conta.saldo) + precoAtual).toFixed(2);
+        // Adiciona o PREÇO VALORIZADO no saldo
+        const novoSaldo = (parseFloat(conta.saldo) + precoDeVenda).toFixed(2);
 
-    // 4. Atualiza o saldo no Firebase
-    await fetch(`${DB_URL}/contas/${idConta}.json`, {
-        method: 'PATCH',
-        body: JSON.stringify({ saldo: novoSaldo })
-    });
+        // Atualiza o saldo no banco
+        await fetch(`${DB_URL}/contas/${idConta}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({ saldo: novoSaldo })
+        });
 
-    // 5. Remove o jogador do seu elenco
-    await fetch(`${DB_URL}/contas/${idConta}/elenco/${idItemNoElenco}.json`, {
-        method: 'DELETE'
-    });
+        // Tira o cara do time
+        await fetch(`${DB_URL}/contas/${idConta}/elenco/${idItemNoElenco}.json`, {
+            method: 'DELETE'
+        });
 
-    alert(`Vendido por C$ ${precoAtual.toFixed(2)}! Você lucrou com a valorização. 📈`);
+        atualizarTela();
+    }
+
+    // Inicializa a tela
     atualizarTela();
-}
-
-    atualizarTela();
-</script>
-
+    </script>
 </body>
 </html>

@@ -10,11 +10,12 @@
         .form-cadastro { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         input, select { padding: 12px; border-radius: 8px; border: none; background: #0f3460; color: white; }
         .card-adm { background: #1a1a2e; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #e94560; }
+        .card-time { border-left: 5px solid #fbc531; } /* Cor diferente para os times */
         .scouts-grid { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-top: 10px; }
         .scout-item { display: flex; flex-direction: column; font-size: 0.8rem; color: #a2a2bd; }
         .scout-item input { width: 60px; text-align: center; margin-top: 5px; }
         .btn-lancar { background: #4cd137; color: #1a1a2e; font-weight: bold; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        .btn-excluir { background: #ff4757; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; float: right; }
+        .btn-excluir { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; float: right; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -38,13 +39,15 @@
 
     <h2>⚽ Jogadores no Sistema</h2>
     <div id="listaJogadoresAdm">Buscando jogadores no Firebase...</div>
+
+    <h2>🛡️ Gerenciar Times Cadastrados</h2>
+    <div id="listaTimesAdm">Buscando times no Firebase...</div>
 </div>
 
 <script>
-    // MESMA URL DO MERCADO
     const DB_URL = "https://cartola-fb340-default-rtdb.firebaseio.com";
 
-    // 1. CARREGAR JOGADORES (O CORAÇÃO DO PROBLEMA)
+    // 1. CARREGAR JOGADORES
     async function carregarJogadores() {
         const lista = document.getElementById('listaJogadoresAdm');
         
@@ -55,11 +58,10 @@
             lista.innerHTML = "";
             
             if (!dados) {
-                lista.innerHTML = "<p>Nenhum jogador encontrado no Firebase. Cadastre um acima!</p>";
+                lista.innerHTML = "<p>Nenhum jogador encontrado no Firebase.</p>";
                 return;
             }
 
-            // Mapeia o objeto do Firebase para podermos editar
             Object.keys(dados).forEach(id => {
                 const jog = dados[id];
                 const isGoleiro = jog.posicao === "Goleiro";
@@ -76,11 +78,11 @@
                     <div class="card-adm">
                         <button class="btn-excluir" onclick="excluirJogador('${id}')">Excluir</button>
                         <strong>${jog.nome}</strong> <span style="color:#e94560">(${jog.posicao})</span>
-                        <br><small>Preço Atual: C$ ${jog.preco}</small>
+                        <br><small>Preço Atual: C$ ${parseFloat(jog.preco).toFixed(2)}</small>
                         
                         <div class="scouts-grid">
                             ${camposScout}
-                            <div class="scout-item"><label>Nota (1-5)</label><input type="number" id="nota-${id}" value="1" min="1" max="5"></div>
+                            <div class="scout-item"><label>Nota (-3 a 5)</label><input type="number" id="nota-${id}" value="0" min="-3" max="5"></div>
                             <button class="btn-lancar" onclick="encerrarRodadaAtleta('${id}')">SALVAR PONTOS</button>
                         </div>
                     </div>
@@ -92,7 +94,7 @@
         }
     }
 
-    // 2. CADASTRAR (SALVA NO MESMO LUGAR QUE O MERCADO LÊ)
+    // 2. CADASTRAR JOGADOR
     async function cadastrarJogador() {
         const nome = document.getElementById('nome').value;
         const posicao = document.getElementById('posicao').value;
@@ -115,10 +117,10 @@
         });
         
         alert("Atleta criado com sucesso!");
-        carregarJogadores(); // Recarrega a lista na hora
+        carregarJogadores();
     }
 
-    // 3. EXCLUIR DO FIREBASE
+    // 3. EXCLUIR JOGADOR
     async function excluirJogador(id) {
         if(confirm("Deseja mesmo remover este jogador do sistema?")) {
             await fetch(`${DB_URL}/jogadores/${id}.json`, { method: 'DELETE' });
@@ -126,13 +128,13 @@
         }
     }
 
-    // 4. LÓGICA DE PONTUAÇÃO E VALORIZAÇÃO
+    // 4. LÓGICA DE PONTUAÇÃO (COM NOTA NEGATIVA)
     async function encerrarRodadaAtleta(id) {
         const res = await fetch(`${DB_URL}/jogadores/${id}.json`);
         const jog = await res.json();
 
-        const nota = parseInt(document.getElementById(`nota-${id}`).value) || 1;
-        let pontosNota = Math.max(0, nota - 1); 
+        // Pega a nota exatamente como digitada (-3 até 5)
+        const nota = parseInt(document.getElementById(`nota-${id}`).value) || 0;
 
         const multGeral = 2.5;
         const buffGoleiro = 2.0;
@@ -141,18 +143,21 @@
         if (jog.posicao === "Goleiro") {
             const defesas = parseInt(document.getElementById(`def-${id}`).value) || 0;
             const gs = parseInt(document.getElementById(`gs-${id}`).value) || 0;
-            pontosBase = ((defesas * 5) + (gs === 0 ? 15 : 0) + (gs * -2) + pontosNota) * buffGoleiro;
+            // Soma os pontos normais e a nota (que pode ser negativa)
+            pontosBase = ((defesas * 5) + (gs === 0 ? 15 : 0) + (gs * -2) + nota) * buffGoleiro;
         } else {
             const gols = parseInt(document.getElementById(`gol-${id}`).value) || 0;
             const ass = parseInt(document.getElementById(`ass-${id}`).value) || 0;
-            pontosBase = (gols * 8) + (ass * 5) + pontosNota;
+            // Soma os gols, assists e a nota (que pode ser negativa)
+            pontosBase = (gols * 8) + (ass * 5) + nota;
         }
 
         const pontosFinais = pontosBase * multGeral;
+        
+        // Se a nota for muito ruim, ele pode perder valor (mas nunca custar menos que 1)
         const valorizacao = pontosFinais / 5;
         const novoPreco = Math.max(1, parseFloat(jog.preco) + valorizacao);
 
-        // Salva no Jogador
         await fetch(`${DB_URL}/jogadores/${id}.json`, {
             method: 'PATCH',
             body: JSON.stringify({ 
@@ -161,7 +166,6 @@
             })
         });
 
-        // Sincroniza com quem escalou ele (Obrigatório para o Ranking funcionar)
         await atualizarPontosNosTimes(jog.nome, pontosFinais);
 
         alert(`${jog.nome} atualizado! Fez ${pontosFinais.toFixed(1)} pontos.`);
@@ -174,7 +178,6 @@
         if(!contas) return;
 
         for (let idC in contas) {
-            // Verifica se o atleta está na escalação (campo) do usuário
             const noTime = contas[idC].escalacao && Object.values(contas[idC].escalacao).find(j => j.nome === nomeAtleta);
             if (noTime) {
                 const novosPontos = (parseFloat(contas[idC].pontosTotais) || 0) + pts;
@@ -186,8 +189,56 @@
         }
     }
 
-    // Inicializa a lista ao abrir
+    // ==========================================
+    // 5. NOVA SEÇÃO: CARREGAR E EXCLUIR TIMES
+    // ==========================================
+    async function carregarTimes() {
+        const listaTimes = document.getElementById('listaTimesAdm');
+        
+        try {
+            const res = await fetch(`${DB_URL}/contas.json`);
+            const contas = await res.json();
+            
+            listaTimes.innerHTML = "";
+            
+            if (!contas) {
+                listaTimes.innerHTML = "<p>Nenhum time cadastrado no Firebase.</p>";
+                return;
+            }
+
+            Object.keys(contas).forEach(idConta => {
+                const time = contas[idConta];
+                // Caso não tenha saldo registrado direito, exibe 0
+                const saldoDisplay = parseFloat(time.saldo) || 0;
+
+                listaTimes.innerHTML += `
+                    <div class="card-adm card-time">
+                        <button class="btn-excluir" onclick="excluirTime('${idConta}')">🗑️ Excluir Time</button>
+                        <strong>${time.nomeTime}</strong> 
+                        <span style="color:#a2a2bd; font-size: 0.9rem;">(Treinador: ${time.treinador || 'Desconhecido'})</span>
+                        <br><small style="color: #4cd137;">Caixa Atual: C$ ${saldoDisplay.toFixed(2)}</small>
+                    </div>
+                `;
+            });
+        } catch (erro) {
+            console.error("Erro ao carregar times:", erro);
+        }
+    }
+
+    async function excluirTime(idConta) {
+        // Trava de segurança para não excluir sem querer
+        const confirmacao = confirm("🚨 ATENÇÃO: Tem certeza que deseja apagar este time PARA SEMPRE? Esta ação não pode ser desfeita.");
+        
+        if(confirmacao) {
+            await fetch(`${DB_URL}/contas/${idConta}.json`, { method: 'DELETE' });
+            alert("Time excluído do banco de dados!");
+            carregarTimes(); // Recarrega a lista de times
+        }
+    }
+
+    // Inicializa as duas listas ao abrir a página
     carregarJogadores();
+    carregarTimes();
 </script>
 </body>
 </html>
