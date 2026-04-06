@@ -226,23 +226,36 @@
         }
     }
 
-    async function venderJogador(idConta, idItemNoElenco, precoJogador) {
-        const res = await fetch(`${DB_URL}/contas/${idConta}.json`);
-        const conta = await res.json();
+    async function venderJogador(idConta, idItemNoElenco, nomeJogador) {
+    // 1. Primeiro, vamos no banco ver o preço ATUALIZADO desse cara no mercado
+    const resMercado = await fetch(`${DB_URL}/jogadores.json`);
+    const jogadoresData = await resMercado.json();
+    
+    // Procura o jogador pelo nome para saber o preço atual de mercado
+    const jogadorNoMercado = Object.values(jogadoresData).find(j => j.nome === nomeJogador);
+    const precoAtual = jogadorNoMercado ? parseFloat(jogadorNoMercado.preco) : 0;
 
-        const novoSaldo = (parseFloat(conta.saldo) + parseFloat(precoJogador)).toFixed(2);
+    // 2. Busca os dados da sua conta
+    const resConta = await fetch(`${DB_URL}/contas/${idConta}.json`);
+    const conta = await resConta.json();
 
-        await fetch(`${DB_URL}/contas/${idConta}.json`, {
-            method: 'PATCH',
-            body: JSON.stringify({ saldo: novoSaldo })
-        });
+    // 3. Calcula o novo saldo com o preço VALORIZADO
+    const novoSaldo = (parseFloat(conta.saldo) + precoAtual).toFixed(2);
 
-        await fetch(`${DB_URL}/contas/${idConta}/elenco/${idItemNoElenco}.json`, {
-            method: 'DELETE'
-        });
+    // 4. Atualiza o saldo no Firebase
+    await fetch(`${DB_URL}/contas/${idConta}.json`, {
+        method: 'PATCH',
+        body: JSON.stringify({ saldo: novoSaldo })
+    });
 
-        atualizarTela();
-    }
+    // 5. Remove o jogador do seu elenco
+    await fetch(`${DB_URL}/contas/${idConta}/elenco/${idItemNoElenco}.json`, {
+        method: 'DELETE'
+    });
+
+    alert(`Vendido por C$ ${precoAtual.toFixed(2)}! Você lucrou com a valorização. 📈`);
+    atualizarTela();
+}
 
     atualizarTela();
 </script>
